@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "semantic-code-indexer": {
+      "command": "python",
+      "args": ["/Users/nwakrat/myprojects/misc/mcp_server/server.py"],
+      "env": {
+        "PYTHONPATH": "/Users/nwakrat/myprojects/misc"
+      }
+    }
+  }
+}

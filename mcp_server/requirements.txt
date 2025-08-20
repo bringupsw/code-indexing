@@ -1,0 +1,6 @@
+# MCP Server Dependencies
+mcp>=0.3.0
+
+# Optional: if you want to run the MCP server with additional features
+# fastapi>=0.104.0  # For HTTP server instead of stdio
+# uvicorn>=0.24.0   # ASGI server for HTTP mode
