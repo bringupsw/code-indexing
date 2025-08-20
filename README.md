@@ -1,112 +1,168 @@
-# Semantic Code Indexing Pipeline
+# Semantic Code Indexer
 
-A comprehensive semantic analysis and indexing system for Python codebases that extracts semantic information, generates embeddings, and builds a knowledge graph for intelligent code search and analysis.
+A powerful semantic code analysis and indexing pipeline for Python codebases that extracts, embeds, and indexes code entities for intelligent search and analysis.
 
 ## 🚀 Features
 
-- **AST Analysis**: Extract semantic entities (functions, classes, methods) and relationships
-- **Embedding Generation**: Create vector embeddings using multiple approaches (text, structure, context)
-- **Knowledge Graph**: Build a graph database with entities and relationships
-- **AI Agent Interface**: Natural language querying of your codebase
-- **Contextual Search**: Business domain and team-aware code search
-- **Analytics**: Comprehensive reporting on code quality, complexity, and structure
+- **Semantic Analysis**: Deep AST parsing to extract functions, classes, methods, and variables with rich metadata
+- **Contextual Classification**: Automatically categorizes code by business domain, team ownership, and architectural patterns
+- **Vector Embeddings**: Multi-approach embedding generation for semantic similarity search
+- **Knowledge Graph**: SQLite-based storage with efficient querying and graph traversal
+- **Natural Language Queries**: AI-powered interface for asking questions about your codebase
+- **Multiple Search Types**: Semantic, graph-based, hybrid, and contextual search capabilities
+- **Comprehensive Analytics**: Detailed reports about codebase structure, complexity, and quality metrics
 
 ## 📦 Installation
 
-### Prerequisites
-- Python 3.8+
-- Git
+### From PyPI (when published)
 
-### Setup
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd misc
+# Minimal installation (basic functionality)
+pip install semantic-code-indexer
 
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# With ML models for real embeddings
+pip install semantic-code-indexer[ml]
 
-# Install dependencies
-pip install -r requirements.txt
+# With enhanced UX features
+pip install semantic-code-indexer[enhanced]
+
+# Full installation
+pip install semantic-code-indexer[all]
+```
+
+### From Source
+
+```bash
+git clone https://github.com/bringupsw/code-indexing.git
+cd code-indexing
+pip install -e .
+```
+
+### Development Installation
+
+```bash
+git clone https://github.com/bringupsw/code-indexing.git
+cd code-indexing
+
+# Basic installation
+pip install -e .
+
+# Development installation with all tools
+pip install -e ".[dev,test,docs]"
+
+# Full installation with ML models
+pip install -e ".[all,dev,test]"
 ```
 
 ## 🎯 Quick Start
 
 ### 1. Index a Codebase
+
 ```bash
-python semantic_pipeline.py --codebase /path/to/your/code --output ./my_index
+# Index your Python codebase using the new modular structure
+code-indexer --codebase /path/to/your/project --output ./index
+
+# Or using the module directly
+python -m code_indexer.apps.cli --codebase /path/to/project --output ./index --context-config ./my_context
 ```
 
-### 2. Ask Questions About Your Code
+### 2. Search the Index
+
 ```bash
-# Get an overview
-python semantic_pipeline.py --ask "What does this code do?" --index ./my_index
+# Semantic search
+code-indexer --search "authentication login" --index ./index
 
-# Find specific functions
-python semantic_pipeline.py --ask "Find authentication functions" --index ./my_index
-
-# Analyze security
-python semantic_pipeline.py --ask "Show me security-critical code" --index ./my_index
-
-# Check complexity
-python semantic_pipeline.py --ask "What are the most complex functions?" --index ./my_index
+# Contextual search with filters
+code-indexer --search "database" --index ./index --domain "Data" --team "Backend Team"
 ```
 
-### 3. Generate Reports
+### 3. Ask Natural Language Questions
+
 ```bash
-python semantic_pipeline.py --report --index ./my_index --analytics
+# Query the AI agent
+code-indexer --ask "What are the most complex functions?" --index ./index
+code-indexer --ask "Find all security-critical code" --index ./index
+code-indexer --ask "Who owns the payment processing logic?" --index ./index
 ```
 
-## 🔧 Configuration
+### 4. Generate Reports
 
-The pipeline works out of the box with intelligent defaults. For advanced usage, you can create custom configuration files:
-
-### Create Custom Configuration
 ```bash
-python semantic_pipeline.py --create-config --context-config ./my_context_config
-```
-
-This creates configuration files for:
-- Business domains (`business_domains.yaml`)
-- Team ownership (`teams.yaml`) 
-- Architectural patterns (`architectural_patterns.yaml`)
-- Code annotations (`annotations.yaml`)
-
-### 2. Ask Questions About Your Code
-```bash
-# Get an overview
-python semantic_pipeline.py --ask "What does this code do?" --index ./my_index
-
-# Find specific functions
-python semantic_pipeline.py --ask "Find authentication functions" --index ./my_index
-
-# Analyze security
-python semantic_pipeline.py --ask "Show me security-critical code" --index ./my_index
-
-# Check complexity
-python semantic_pipeline.py --ask "What are the most complex functions?" --index ./my_index
-```
-
-### 3. Generate Reports
-```bash
-python semantic_pipeline.py --report --index ./my_index --analytics
+# Comprehensive analytics report
+code-indexer --report --index ./index --analytics --save-results report.json
 ```
 
 ## 🔧 Configuration
 
-The pipeline automatically creates default configuration when needed. For custom configuration:
+Create contextual configuration files to customize analysis:
 
 ```bash
-# Create custom configuration files
-python semantic_pipeline.py --create-config --context-config ./my_context
+# Generate default configuration files
+code-indexer --create-config --context-config ./my_context
 ```
 
-This creates configuration files for:
-- Business domains (`business_domains.yaml`)
-- Team ownership (`teams.yaml`) 
-- Architectural patterns (`architectural_patterns.yaml`)
-- Code annotations (`annotations.yaml`)
+This creates:
+- `business_domains.yaml` - Define your business domains and keywords
+- `teams.yaml` - Configure team ownership patterns
+- `architectural_patterns.yaml` - Define architectural patterns to detect
+- `annotations.yaml` - Configure quality and security annotations
+
+## 💻 Python API
+
+You can also use the indexer programmatically:
+
+```python
+from code_indexer.libs.common import CodebaseSemanticPipeline
+
+# Initialize pipeline
+pipeline = CodebaseSemanticPipeline(
+    output_dir="./index",
+    context_config_dir="./context_config"
+)
+
+# Process a codebase
+results = pipeline.process_codebase("/path/to/codebase")
+
+# Search the index
+search_results = pipeline.search("authentication", search_type="hybrid")
+
+# Query with AI agent
+response = pipeline.query_agent("Find all database-related functions")
+
+# Generate analytics
+analytics = pipeline.get_contextual_analytics()
+```
+
+## � Project Structure
+
+```
+src/code_indexer/
+├── apps/           # Application entry points
+│   └── cli/        # Command line interface
+├── libs/           # Shared libraries
+│   └── common/     # Common components
+│       ├── models.py              # Core data structures
+│       ├── contextual_knowledge.py # Business domain classification
+│       ├── ast_analyzer.py        # AST parsing and extraction
+│       ├── embeddings.py          # Vector embedding generation
+│       ├── knowledge_graph.py     # Knowledge storage and search
+│       ├── ai_agent.py            # Natural language interface
+│       └── pipeline.py            # Main orchestrator
+## 📚 Dependencies
+
+### Core Dependencies (Required)
+- **numpy**: Vector operations and mathematical computations
+- **PyYAML**: Configuration file parsing
+
+### Optional Dependencies
+- **[ml]**: `sentence-transformers`, `transformers`, `torch`, `scikit-learn` - For real ML model embeddings
+- **[enhanced]**: `tqdm`, `rich` - For progress bars and enhanced CLI experience  
+- **[dev]**: `pytest`, `black`, `isort`, `flake8`, `mypy`, `pre-commit` - Development tools
+- **[test]**: `pytest`, `pytest-cov`, `pytest-mock` - Testing frameworks
+- **[docs]**: `sphinx`, `sphinx-rtd-theme`, `myst-parser` - Documentation generation
+
+The package works out-of-the-box with just the core dependencies using mock embeddings. Install optional groups as needed for enhanced functionality.
+```
 
 ### Example Configuration
 
@@ -191,25 +247,90 @@ semantic-pipeline/
 
 ## 🛠️ Development
 
-### Running Tests
+### Setting up Development Environment
+
 ```bash
-# Create some sample code to analyze
-mkdir sample_code
-echo 'def hello_world(): """Greets the world.""" print("Hello, World!")' > sample_code/main.py
+# Clone the repository
+git clone https://github.com/bringupsw/code-indexing.git
+cd code-indexing
 
-# Index the sample code
-python semantic_pipeline.py --codebase ./sample_code --output ./test_index
+# Install in development mode with all dependencies
+pip install -e ".[dev,test,docs]"
 
-# Test AI agent
-python semantic_pipeline.py --ask "What does this code do?" --index ./test_index
+# Install pre-commit hooks
+pre-commit install
 ```
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/code_indexer --cov-report=html
+
+# Run specific test categories
+pytest -m unit
+pytest -m integration
+```
+
+### Code Quality
+
+```bash
+# Format code
+black src/
+isort src/
+
+# Type checking
+mypy src/
+
+# Linting
+flake8 src/
+
+# Run all quality checks
+pre-commit run --all-files
+```
+
+### Building and Publishing
+
+```bash
+# Build the package
+python -m build
+
+# Check the build
+twine check dist/*
+
+# Publish to PyPI (maintainers only)
+twine upload dist/*
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for your changes
+5. Run the test suite (`pytest`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- Built with Python's AST module for code analysis
-- Uses SQLite for efficient knowledge graph storage
-- Inspired by modern code intelligence tools
+- Built with Python's AST module for robust code analysis
+- Uses sentence-transformers for high-quality embeddings
+- SQLite for efficient knowledge graph storage
+- Inspired by modern code intelligence tools and semantic search systems
 
 ## 📞 Support
+
+- 📖 [Documentation](src/code_indexer/README.md)
+- 🐛 [Issue Tracker](https://github.com/bringupsw/code-indexing/issues)
+- 💬 [Discussions](https://github.com/bringupsw/code-indexing/discussions)
 
 For questions, issues, or contributions, please open an issue on GitHub.

@@ -45,6 +45,7 @@ Thumbs.db
 
 # Project specific
 test_index/
+test_output/
 contextual_index/
 *.db
 *.sqlite

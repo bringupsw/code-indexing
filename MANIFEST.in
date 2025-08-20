@@ -1,0 +1,15 @@
+include README.md
+include LICENSE
+include pyproject.toml
+include src/code_indexer/README.md
+recursive-include src/code_indexer *.py
+recursive-include src/code_indexer *.yaml
+recursive-include src/code_indexer *.yml
+recursive-include src/code_indexer *.json
+recursive-include context_config *.yaml
+recursive-include context_config *.yml
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.pyd
+recursive-exclude * .git*
+recursive-exclude * .DS_Store
