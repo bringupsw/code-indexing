@@ -53,10 +53,14 @@ ml = [
     "torch>=1.12.0",
     "scikit-learn>=1.1.0"
 ]
-# Progress bars and enhanced UX
+# Enhanced UX dependencies
 enhanced = [
     "tqdm>=4.64.0",
     "rich>=13.0.0"
+]
+# MCP server dependencies
+mcp = [
+    "mcp>=1.0.0"
 ]
 # Development dependencies
 dev = [
@@ -82,7 +86,7 @@ docs = [
 ]
 # All optional features
 all = [
-    "semantic-code-indexer[ml,enhanced]"
+    "semantic-code-indexer[ml,enhanced,mcp]"
 ]
 
 [project.urls]
@@ -93,6 +97,7 @@ Documentation = "https://github.com/bringupsw/code-indexing#readme"
 
 [project.scripts]
 code-indexer = "code_indexer.apps.cli.main:main"
+code-indexer-mcp = "code_indexer.apps.mcp.main:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

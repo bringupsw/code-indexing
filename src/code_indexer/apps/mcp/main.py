@@ -6,6 +6,7 @@ This server exposes the semantic code indexer capabilities to Claude Desktop
 via the Model Context Protocol (MCP).
 """
 
+import argparse
 import asyncio
 import json
 import logging
@@ -13,9 +14,6 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-# Add the parent directory to the path to import our code indexer
-sys.path.append(str(Path(__file__).parent.parent))
 
 try:
     from mcp.server import Server
@@ -28,12 +26,16 @@ try:
     )
 except ImportError:
     print("MCP not installed. Install with: pip install mcp")
+    print("Install with: pip install mcp")
     sys.exit(1)
 
 # Import our semantic code indexer
-from src.code_indexer.libs.common.pipeline import CodebaseSemanticPipeline
-from src.code_indexer.libs.common.models import CodeEntity
-from src.code_indexer.libs.common.embeddings import CodeEmbeddingGenerator
+from ...libs.common.pipeline import CodebaseSemanticPipeline
+from ...libs.common.models import CodeEntity
+from ...libs.common.embeddings import CodeEmbeddingGenerator
+
+# Import setup functionality
+from .setup_claude import setup_claude_desktop
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +47,73 @@ current_index_path: Optional[str] = None
 
 # MCP Server instance
 server = Server("semantic-code-indexer")
+
+
+def parse_arguments():
+    """Parse command line arguments for the MCP server."""
+    parser = argparse.ArgumentParser(
+        description="Semantic Code Indexer MCP Server - Expose code analysis to Claude Desktop",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Start the MCP server (typically called by Claude Desktop)
+  code-indexer-mcp
+
+  # Test the server locally
+  code-indexer-mcp --test
+
+  # Setup Claude Desktop configuration
+  code-indexer-mcp --setup-claude-desktop
+
+Configuration:
+  The MCP server is typically configured in Claude Desktop's settings:
+  
+  Location: ~/Library/Application Support/Claude/claude_desktop_config.json
+  
+  {
+    "mcpServers": {
+      "semantic-code-indexer": {
+        "command": "code-indexer-mcp",
+        "env": {
+          "PYTHONPATH": "/path/to/your/project"
+        }
+      }
+    }
+  }
+
+Tools Available:
+  - index_codebase: Index a Python codebase for analysis
+  - search_code: Search code using natural language queries
+  - ask_agent: Ask questions about your codebase
+  - get_code_analytics: Generate comprehensive analytics
+  - find_similar_code: Find similar code patterns
+  - get_entity_details: Get detailed info about functions/classes
+  - list_indexes: List available code indexes
+
+For more information, visit: https://github.com/bringupsw/code-indexing
+""",
+    )
+
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Test mode - run basic functionality checks",
+    )
+
+    parser.add_argument(
+        "--setup-claude-desktop",
+        action="store_true",
+        help="Setup Claude Desktop configuration for the MCP server",
+    )
+
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="Set the logging level",
+    )
+
+    return parser.parse_args()
 
 
 @server.list_tools()
@@ -681,13 +750,71 @@ async def handle_list_indexes(args: Dict[str, Any]) -> List[TextContent]:
         return [TextContent(type="text", text=f"Error listing indexes: {str(e)}")]
 
 
-async def main():
-    """Main entry point for the MCP server."""
+async def run_server():
+    """Run the MCP server."""
     logger.info("Starting Semantic Code Indexer MCP Server")
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
+def test_mode():
+    """Test the MCP server functionality."""
+    print("🧪 Testing Semantic Code Indexer MCP Server")
+    print("=" * 50)
+
+    # Test imports
+    try:
+        from ...libs.common.pipeline import CodebaseSemanticPipeline
+
+        print("✅ Core imports successful")
+    except ImportError as e:
+        print(f"❌ Import error: {e}")
+        return False
+
+    # Test MCP imports
+    try:
+        from mcp.server import Server
+
+        print("✅ MCP imports successful")
+    except ImportError as e:
+        print(f"❌ MCP import error: {e}")
+        print("   Install with: pip install mcp")
+        return False
+
+    # Test tool listing
+    try:
+        import asyncio
+
+        tools = asyncio.run(list_tools())
+        print(f"✅ Found {len(tools)} tools available")
+        for tool in tools:
+            print(f"   - {tool.name}: {tool.description}")
+    except Exception as e:
+        print(f"❌ Tool listing error: {e}")
+        return False
+
+    print("\n✅ MCP server is ready for Claude Desktop!")
+    return True
+
+
+def main():
+    """Main entry point for the MCP server CLI."""
+    args = parse_arguments()
+
+    # Set up logging
+    logging.basicConfig(level=getattr(logging, args.log_level))
+
+    if args.test:
+        success = test_mode()
+        sys.exit(0 if success else 1)
+    elif args.setup_claude_desktop:
+        success = setup_claude_desktop()
+        sys.exit(0 if success else 1)
+    else:
+        # Run the MCP server
+        asyncio.run(run_server())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

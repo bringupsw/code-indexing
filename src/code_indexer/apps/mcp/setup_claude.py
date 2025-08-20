@@ -33,22 +33,14 @@ def setup_claude_desktop():
 
     # Get paths
     config_path = get_claude_config_path()
-    server_path = Path(__file__).parent / "server.py"
-    project_root = Path(__file__).parent.parent
 
+    # Use the new CLI command instead of direct script path
     print(f"📁 Claude config path: {config_path}")
-    print(f"🐍 MCP server path: {server_path.absolute()}")
-    print(f"📦 Project root: {project_root.absolute()}")
+    print(f"🚀 MCP command: code-indexer-mcp")
 
-    # Create configuration
+    # Create configuration using the CLI command
     mcp_config = {
-        "mcpServers": {
-            "semantic-code-indexer": {
-                "command": "python",
-                "args": [str(server_path.absolute())],
-                "env": {"PYTHONPATH": str(project_root.absolute())},
-            }
-        }
+        "mcpServers": {"semantic-code-indexer": {"command": "code-indexer-mcp", "args": []}}
     }
 
     # Check if config file exists
@@ -84,27 +76,29 @@ def setup_claude_desktop():
 
     print(f"\n✅ Configuration written to: {config_path}")
 
-    # Check MCP dependencies
-    print(f"\n🔍 Checking dependencies...")
+    # Check if the package is installed
+    print(f"\n🔍 Checking installation...")
     try:
-        import mcp
+        import subprocess
 
-        print("✅ MCP package is installed")
-    except ImportError:
-        print("❌ MCP package not found")
-        print("   Install with: pip install mcp")
+        result = subprocess.run(
+            ["code-indexer-mcp", "--test"], capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0:
+            print("✅ MCP server is properly installed and working")
+        else:
+            print("❌ MCP server test failed")
+            print(f"   Error: {result.stderr}")
+            return False
+    except FileNotFoundError:
+        print("❌ code-indexer-mcp command not found")
+        print("   Make sure to install the package with: pip install -e .")
         return False
-
-    # Test server imports
-    try:
-        import sys
-
-        sys.path.append(str(project_root))
-        from src.code_indexer.libs.common.pipeline import CodebaseSemanticPipeline
-
-        print("✅ Code indexer imports successfully")
-    except ImportError as e:
-        print(f"❌ Code indexer import failed: {e}")
+    except subprocess.TimeoutExpired:
+        print("❌ MCP server test timed out")
+        return False
+    except Exception as e:
+        print(f"❌ Error testing MCP server: {e}")
         return False
 
     print(f"\n🎉 Setup complete!")
@@ -146,14 +140,24 @@ def verify_setup():
             return False
 
         server_config = config["mcpServers"]["semantic-code-indexer"]
-        server_path = Path(server_config["args"][0])
 
-        if not server_path.exists():
-            print(f"❌ MCP server file not found: {server_path}")
+        # Test if the command works
+        try:
+            import subprocess
+
+            result = subprocess.run(
+                [server_config["command"], "--test"], capture_output=True, text=True, timeout=30
+            )
+            if result.returncode == 0:
+                print("✅ Configuration is valid")
+                print("✅ MCP server command works")
+            else:
+                print("❌ MCP server command failed")
+                print(f"   Error: {result.stderr}")
+                return False
+        except Exception as e:
+            print(f"❌ Error testing command: {e}")
             return False
-
-        print("✅ Configuration is valid")
-        print("✅ MCP server file exists")
 
         return True
 
