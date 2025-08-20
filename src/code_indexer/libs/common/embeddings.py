@@ -7,9 +7,24 @@ to create rich vector representations of code entities.
 
 import hashlib
 import numpy as np
+import os
 from typing import Dict, List
 
 from .models import CodeEntity
+
+# Try to import ML dependencies, fall back to mock if not available
+USE_REAL_EMBEDDINGS = os.getenv('USE_REAL_EMBEDDINGS', 'false').lower() == 'true'
+
+try:
+    if USE_REAL_EMBEDDINGS:
+        from sentence_transformers import SentenceTransformer
+        import torch
+        ML_AVAILABLE = True
+    else:
+        ML_AVAILABLE = False
+except ImportError:
+    ML_AVAILABLE = False
+    USE_REAL_EMBEDDINGS = False
 
 
 class CodeEmbeddingGenerator:
@@ -25,26 +40,52 @@ class CodeEmbeddingGenerator:
     The hybrid approach provides richer representations that capture both
     syntactic and semantic aspects of code entities.
     
-    In a production environment, this would integrate with models like:
-    - CodeBERT for text embeddings
-    - Code2Vec for structural embeddings
-    - Custom models for contextual embeddings
+    Supports both mock embeddings (for development/testing) and real ML
+    embeddings (for production use).
     
     Attributes:
         model_name (str): Name of the base model for text embeddings
+        use_real_embeddings (bool): Whether to use real ML models or mock embeddings
+        text_model: Loaded sentence transformer model (if using real embeddings)
     """
     
-    def __init__(self, model_name='microsoft/codebert-base'):
+    def __init__(self, model_name='microsoft/codebert-base', use_real_embeddings=None):
         """
         Initialize the embedding generator.
         
         Args:
             model_name (str): Model identifier for text-based embeddings
+            use_real_embeddings (bool): Override to use real ML models
         """
         self.model_name = model_name
-        # In practice, you'd load actual models here
-        # self.text_model = AutoModel.from_pretrained(model_name)
-        # self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.use_real_embeddings = use_real_embeddings if use_real_embeddings is not None else USE_REAL_EMBEDDINGS
+        self.text_model = None
+        
+        if self.use_real_embeddings and ML_AVAILABLE:
+            try:
+                print(f"🚀 Loading real ML embedding model: {model_name}")
+                # Use a code-specific model if available, fall back to general models
+                if 'codebert' in model_name.lower():
+                    # For CodeBERT, we'll use sentence-transformers compatible model
+                    self.text_model = SentenceTransformer('all-MiniLM-L6-v2')
+                else:
+                    self.text_model = SentenceTransformer(model_name)
+                print("✅ Real ML embeddings loaded successfully!")
+            except Exception as e:
+                print(f"⚠️  Failed to load ML model, falling back to mock embeddings: {e}")
+                self.use_real_embeddings = False
+        else:
+            print("📚 Using mock embeddings (fast, deterministic, good for development)")
+    
+    def get_embedding_info(self):
+        """Get information about the current embedding configuration."""
+        return {
+            'type': 'real_ml' if self.use_real_embeddings else 'mock',
+            'model_name': self.model_name,
+            'ml_available': ML_AVAILABLE,
+            'dimensions': 480 if not self.use_real_embeddings else 
+                         (self.text_model.get_sentence_embedding_dimension() + 96 if self.text_model else 480)
+        }
     
     def generate_embeddings(self, entities: List[CodeEntity]) -> Dict[str, np.ndarray]:
         """
@@ -83,27 +124,25 @@ class CodeEmbeddingGenerator:
         """
         Generate text-based embedding from source code and docstring.
         
-        This method would typically use a pre-trained code language model
-        like CodeBERT, GraphCodeBERT, or similar to generate embeddings
-        from the textual representation of the code.
+        This method uses either real ML models (sentence transformers) or
+        mock embeddings based on configuration.
         
         Args:
             entity (CodeEntity): Entity to generate embedding for
             
         Returns:
             np.ndarray: Text-based embedding vector
-            
-        Note:
-            Current implementation uses a mock embedding for demonstration.
-            In production, this would use actual transformer models.
         """
         text = f"{entity.name} {entity.docstring or ''} {entity.source_code}"
         
-        # Simplified - in practice use actual CodeBERT/similar model
-        # tokens = self.tokenizer(text, return_tensors='pt', truncation=True)
-        # with torch.no_grad():
-        #     outputs = self.text_model(**tokens)
-        #     embedding = outputs.last_hidden_state.mean(dim=1).squeeze()
+        if self.use_real_embeddings and self.text_model:
+            # Use real ML model
+            try:
+                embedding = self.text_model.encode([text], convert_to_numpy=True)[0]
+                return embedding.astype(np.float32)
+            except Exception as e:
+                print(f"⚠️  ML embedding failed, using mock: {e}")
+                # Fall back to mock
         
         # Mock embedding for demo - creates deterministic embedding based on content
         hash_val = int(hashlib.md5(text.encode()).hexdigest()[:8], 16)
