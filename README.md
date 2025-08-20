@@ -204,17 +204,6 @@ python semantic_pipeline.py --codebase ./sample_code --output ./test_index
 python semantic_pipeline.py --ask "What does this code do?" --index ./test_index
 ```
 
-### Contributing
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📝 License
-
-This project is open source. License details to be determined.
-
 ## 🙏 Acknowledgments
 
 - Built with Python's AST module for code analysis
