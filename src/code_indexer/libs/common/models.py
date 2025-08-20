@@ -13,13 +13,14 @@ from dataclasses import dataclass
 class BusinessDomain:
     """
     Represents a business domain with associated patterns and importance.
-    
+
     Attributes:
         name (str): Domain name (e.g., "Authentication", "Payment")
         keywords (List[str]): Keywords associated with this domain
         patterns (List[str]): Regex patterns to match domain-related code
         importance (float): Importance multiplier for this domain
     """
+
     name: str
     keywords: List[str]
     patterns: List[str]
@@ -30,13 +31,14 @@ class BusinessDomain:
 class ArchitecturalPattern:
     """
     Represents an architectural pattern with quality metrics.
-    
+
     Attributes:
         name (str): Pattern name (e.g., "MVC", "Repository")
         indicators (List[str]): Keywords that indicate this pattern
         quality_metrics (Dict[str, Any]): Quality requirements for this pattern
         relationships (List[str]): Expected relationships in this pattern
     """
+
     name: str
     indicators: List[str]
     quality_metrics: Dict[str, Any]
@@ -47,7 +49,7 @@ class ArchitecturalPattern:
 class TeamOwnership:
     """
     Represents team ownership and preferences.
-    
+
     Attributes:
         name (str): Team name
         owned_modules (List[str]): Module paths owned by this team
@@ -55,6 +57,7 @@ class TeamOwnership:
         contact (str): Contact information
         code_style (Dict[str, Any]): Code style preferences
     """
+
     name: str
     owned_modules: List[str]
     expertise: List[str]
@@ -66,13 +69,14 @@ class TeamOwnership:
 class ContextualAnnotation:
     """
     Represents contextual annotations for specific code entities.
-    
+
     Attributes:
         file_path (str): Path to the file
         function_name (str): Name of the function
         category (str): Annotation category (e.g., "performance", "security")
         annotations (Dict[str, Any]): Specific annotations
     """
+
     file_path: str
     function_name: str
     category: str
@@ -83,10 +87,10 @@ class ContextualAnnotation:
 class CodeEntity:
     """
     Represents a semantic entity extracted from code (function, class, method, etc.).
-    
+
     This is the core data structure that holds all information about a code entity,
     including its semantic metadata, contextual information, and quality metrics.
-    
+
     Attributes:
         id (str): Unique identifier for the entity
         name (str): Entity name
@@ -117,6 +121,7 @@ class CodeEntity:
         quality_issues (List[str]): Identified quality issues
         annotations (Dict[str, Any]): Additional contextual annotations
     """
+
     id: str
     name: str
     type: str
@@ -145,7 +150,7 @@ class CodeEntity:
     importance_score: float = 1.0
     quality_issues: List[str] = None
     annotations: Dict[str, Any] = None
-    
+
     def __post_init__(self):
         """Initialize mutable default values."""
         if self.parameters is None:
@@ -168,7 +173,7 @@ class CodeEntity:
 class CodeRelation:
     """
     Represents a relationship between two code entities.
-    
+
     Attributes:
         source_id (str): ID of the source entity
         target_id (str): ID of the target entity
@@ -176,12 +181,13 @@ class CodeRelation:
         weight (float): Strength of the relationship
         metadata (Dict[str, Any]): Additional relationship metadata
     """
+
     source_id: str
     target_id: str
     relation_type: str
     weight: float = 1.0
     metadata: Dict[str, Any] = None
-    
+
     def __post_init__(self):
         """Initialize mutable default values."""
         if self.metadata is None:
@@ -192,18 +198,19 @@ class CodeRelation:
 class QueryResult:
     """
     Represents the result of a query operation.
-    
+
     Attributes:
         entities (List[CodeEntity]): Matching entities
         confidence (float): Confidence score of the result
         query_time (float): Time taken to process the query
         metadata (Dict[str, Any]): Additional result metadata
     """
+
     entities: List[CodeEntity]
     confidence: float
     query_time: float
     metadata: Dict[str, Any] = None
-    
+
     def __post_init__(self):
         """Initialize mutable default values."""
         if self.metadata is None:
@@ -214,18 +221,19 @@ class QueryResult:
 class QueryIntent:
     """
     Represents the detected intent of a natural language query.
-    
+
     Attributes:
         intent_type (str): The type of intent detected
         confidence (float): Confidence in the intent detection
         entities (List[str]): Extracted entities from the query
         parameters (Dict[str, Any]): Query parameters
     """
+
     intent_type: str
     confidence: float
     entities: List[str] = None
     parameters: Dict[str, Any] = None
-    
+
     def __post_init__(self):
         """Initialize mutable default values."""
         if self.entities is None:

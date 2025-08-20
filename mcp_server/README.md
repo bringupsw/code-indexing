@@ -2,6 +2,15 @@
 
 This MCP (Model Context Protocol) server exposes the Semantic Code Indexer capabilities to Claude Desktop, allowing you to analyze and search Python codebases directly from Claude conversations.
 
+## ✅ Status: Production Ready
+
+This MCP server is fully functional and includes:
+- **7 comprehensive tools** for code analysis (including the new `list_indexes` tool)
+- **Robust index path management** with automatic fallback
+- **Support for multiple project indexes** 
+- **High-quality ML embeddings** for semantic search
+- **Comprehensive error handling** and validation
+
 ## 🚀 Quick Setup
 
 ### 1. Install MCP Dependencies
@@ -75,6 +84,11 @@ Get detailed information about a specific code entity
 - **entity_name**: Name of the function, class, or entity
 - **include_source**: Include full source code
 - **include_dependencies**: Include dependency information
+
+### 📂 `list_indexes`
+List all available code indexes
+- Shows all previously created indexes with their paths and metadata
+- Helps you manage multiple project indexes
 
 ## 💬 Example Conversations with Claude
 
