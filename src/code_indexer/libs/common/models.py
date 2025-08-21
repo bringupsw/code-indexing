@@ -94,6 +94,7 @@ class CodeEntity:
     Attributes:
         id (str): Unique identifier for the entity
         name (str): Entity name
+        full_name (str): Full qualified name including module path
         type (str): Entity type ('function', 'class', 'method', 'variable')
         file_path (str): Path to the source file
         line_start (int): Starting line number
@@ -109,6 +110,7 @@ class CodeEntity:
         imports (List[str]): Imported modules/functions used
         calls (List[str]): Functions/methods called
         variables (List[str]): Variables used/defined
+        dependencies (List[str]): Dependencies identified in the code
         has_docstring (bool): Whether entity has documentation
         is_public (bool): Whether entity is public API
         is_tested (bool): Whether entity has corresponding tests
@@ -124,6 +126,7 @@ class CodeEntity:
 
     id: str
     name: str
+    full_name: str
     type: str
     file_path: str
     line_start: int
@@ -139,6 +142,7 @@ class CodeEntity:
     imports: List[str] = None
     calls: List[str] = None
     variables: List[str] = None
+    dependencies: List[str] = None
     has_docstring: bool = False
     is_public: bool = True
     is_tested: bool = False
@@ -163,6 +167,8 @@ class CodeEntity:
             self.calls = []
         if self.variables is None:
             self.variables = []
+        if self.dependencies is None:
+            self.dependencies = []
         if self.quality_issues is None:
             self.quality_issues = []
         if self.annotations is None:

@@ -428,6 +428,7 @@ class SemanticVisitor(ast.NodeVisitor):
         entity = CodeEntity(
             id=entity_id,
             name=node.name,
+            full_name=f"{self.current_class}.{node.name}" if self.current_class else node.name,
             type="method" if self.current_class else "function",
             file_path=self.file_path,
             line_start=node.lineno,
@@ -442,6 +443,7 @@ class SemanticVisitor(ast.NodeVisitor):
             has_docstring=bool(ast.get_docstring(node)),
             has_type_hints=bool(node.returns or any(arg.annotation for arg in node.args.args)),
             handles_exceptions=self._has_exception_handling(node),
+            dependencies=dep_visitor.dependencies,
         )
 
         self.entities.append(entity)
