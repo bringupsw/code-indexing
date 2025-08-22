@@ -132,6 +132,7 @@ class CodebaseSemanticPipeline:
             query_entity = CodeEntity(
                 id="query",
                 name=query,
+                full_name=query,
                 type="query",
                 file_path="",
                 line_start=0,

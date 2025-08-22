@@ -641,6 +641,361 @@ class SemanticVisitor(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Import(self, node):
+        """
+        Track import statements for dependency analysis.
+
+        Captures direct imports like: import os, sys
+        """
+        for alias in node.names:
+            module_name = alias.name
+            import_alias = alias.asname if alias.asname else alias.name
+
+            self.imports[import_alias] = module_name
+
+            # Create import relationship
+            if self.current_function:
+                self.relations.append(
+                    CodeRelation(
+                        source_id=self.current_function,
+                        target_id=f"import:{module_name}",
+                        relation_type="imports",
+                        weight=0.6,
+                        metadata={"line": node.lineno, "alias": import_alias},
+                    )
+                )
+
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        """
+        Track from X import Y statements for dependency analysis.
+
+        Captures imports like: from collections import defaultdict
+        """
+        module = node.module if node.module else "."
+        level = node.level  # For relative imports
+
+        for alias in node.names:
+            imported_name = alias.name
+            import_alias = alias.asname if alias.asname else alias.name
+
+            full_import = f"{module}.{imported_name}" if module != "." else imported_name
+            self.imports[import_alias] = full_import
+
+            # Create import relationship
+            if self.current_function:
+                self.relations.append(
+                    CodeRelation(
+                        source_id=self.current_function,
+                        target_id=f"import:{full_import}",
+                        relation_type="imports",
+                        weight=0.6,
+                        metadata={
+                            "line": node.lineno,
+                            "module": module,
+                            "imported": imported_name,
+                            "alias": import_alias,
+                            "level": level,
+                        },
+                    )
+                )
+
+        self.generic_visit(node)
+
+    def visit_Assign(self, node):
+        """
+        Track variable assignments and constants.
+
+        Captures assignments like: x = 5, self.attr = value, CONSTANT = "value"
+        """
+        # Extract assigned names
+        targets = []
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                targets.append(target.id)
+            elif isinstance(target, ast.Attribute):
+                attr_name = self._get_name(target)
+                if attr_name:
+                    targets.append(attr_name)
+
+        # Analyze the assignment value
+        value_info = self._analyze_assignment_value(node.value)
+
+        # Create entities for constants (uppercase variables)
+        for target in targets:
+            if target.isupper() and len(target) > 1:  # Likely a constant
+                entity_id = f"{self.file_path}:{target}:{node.lineno}"
+
+                entity = CodeEntity(
+                    id=entity_id,
+                    name=target,
+                    full_name=f"{self.current_class}.{target}" if self.current_class else target,
+                    type="constant",
+                    file_path=self.file_path,
+                    line_start=node.lineno,
+                    line_end=node.lineno,
+                    source_code=ast.unparse(node),
+                    signature=f"{target} = {value_info['summary']}",
+                    complexity=0,
+                    class_name=self.current_class,
+                )
+
+                # Add value type information
+                entity.annotations["value_type"] = value_info["type"]
+                entity.annotations["value_summary"] = value_info["summary"]
+                entity.annotations["is_constant"] = True
+
+                if self.current_class:
+                    entity.annotations["scope"] = "class"
+                else:
+                    entity.annotations["scope"] = "module"
+
+                self.entities.append(entity)
+
+        # Track assignments in current function context
+        if self.current_function:
+            for target in targets:
+                self.relations.append(
+                    CodeRelation(
+                        source_id=self.current_function,
+                        target_id=f"assigns:{target}",
+                        relation_type="assigns",
+                        weight=0.4,
+                        metadata={
+                            "line": node.lineno,
+                            "target": target,
+                            "value_type": value_info["type"],
+                        },
+                    )
+                )
+
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node):
+        """
+        Track type-annotated assignments.
+
+        Captures assignments like: x: int = 5, self.name: str = "test"
+        """
+        target_name = None
+
+        if isinstance(node.target, ast.Name):
+            target_name = node.target.id
+        elif isinstance(node.target, ast.Attribute):
+            target_name = self._get_name(node.target)
+
+        if target_name:
+            # Get type annotation
+            type_annotation = ast.unparse(node.annotation) if node.annotation else "Unknown"
+
+            # Analyze value if present
+            value_info = {"type": "None", "summary": "None"}
+            if node.value:
+                value_info = self._analyze_assignment_value(node.value)
+
+            # Create entity for class/instance variables with type annotations
+            if self.current_class and isinstance(node.target, ast.Attribute):
+                entity_id = f"{self.file_path}:{target_name}:{node.lineno}"
+
+                entity = CodeEntity(
+                    id=entity_id,
+                    name=target_name.split(".")[-1],  # Get the attribute name
+                    full_name=target_name,
+                    type="attribute",
+                    file_path=self.file_path,
+                    line_start=node.lineno,
+                    line_end=node.lineno,
+                    source_code=ast.unparse(node),
+                    signature=f"{target_name}: {type_annotation}",
+                    complexity=0,
+                    class_name=self.current_class,
+                    has_type_hints=True,
+                )
+
+                entity.annotations["type_annotation"] = type_annotation
+                entity.annotations["value_type"] = value_info["type"]
+                entity.annotations["has_value"] = node.value is not None
+                entity.annotations["scope"] = (
+                    "instance" if target_name.startswith("self.") else "class"
+                )
+
+                self.entities.append(entity)
+
+            # Track in current function context
+            if self.current_function:
+                self.relations.append(
+                    CodeRelation(
+                        source_id=self.current_function,
+                        target_id=f"typed_assigns:{target_name}",
+                        relation_type="typed_assigns",
+                        weight=0.5,
+                        metadata={
+                            "line": node.lineno,
+                            "target": target_name,
+                            "type_annotation": type_annotation,
+                            "value_type": value_info["type"],
+                        },
+                    )
+                )
+
+        self.generic_visit(node)
+
+    def visit_Try(self, node):
+        """
+        Analyze try/except blocks for exception handling patterns.
+
+        Captures exception handling structure and error recovery patterns.
+        """
+        if self.current_function:
+            # Analyze what exceptions are being caught
+            caught_exceptions = []
+            for handler in node.handlers:
+                if handler.type:
+                    exception_type = self._get_name(handler.type)
+                    if exception_type:
+                        caught_exceptions.append(exception_type)
+                else:
+                    caught_exceptions.append("Exception")  # Bare except
+
+            # Track exception handling relationship
+            self.relations.append(
+                CodeRelation(
+                    source_id=self.current_function,
+                    target_id=f"handles_exceptions:{','.join(caught_exceptions)}",
+                    relation_type="handles_exceptions",
+                    weight=0.7,
+                    metadata={
+                        "line": node.lineno,
+                        "exceptions": caught_exceptions,
+                        "has_else": bool(node.orelse),
+                        "has_finally": bool(node.finalbody),
+                        "handler_count": len(node.handlers),
+                    },
+                )
+            )
+
+            # Analyze exception handler complexity
+            for i, handler in enumerate(node.handlers):
+                handler_complexity = len(handler.body)
+                exception_type = self._get_name(handler.type) if handler.type else "Exception"
+
+                # Create relationship for each exception handler
+                self.relations.append(
+                    CodeRelation(
+                        source_id=self.current_function,
+                        target_id=f"except_handler:{exception_type}:{i}",
+                        relation_type="exception_handler",
+                        weight=0.6,
+                        metadata={
+                            "line": handler.lineno,
+                            "exception_type": exception_type,
+                            "handler_complexity": handler_complexity,
+                            "has_name": handler.name is not None,
+                        },
+                    )
+                )
+
+        self.generic_visit(node)
+
+    def visit_Raise(self, node):
+        """
+        Track raised exceptions for error propagation analysis.
+
+        Captures explicit exception raising patterns.
+        """
+        if self.current_function:
+            exception_info = {"type": "Unknown", "has_cause": False}
+
+            if node.exc:
+                if isinstance(node.exc, ast.Call):
+                    # Exception instantiation: raise ValueError("message")
+                    exception_type = self._get_name(node.exc.func)
+                    exception_info["type"] = exception_type if exception_type else "Unknown"
+                elif isinstance(node.exc, ast.Name):
+                    # Re-raising variable: raise exc
+                    exception_info["type"] = node.exc.id
+                else:
+                    exception_info["type"] = "Complex"
+
+                exception_info["has_cause"] = node.cause is not None
+            else:
+                # Bare raise statement
+                exception_info["type"] = "Re-raise"
+
+            # Track exception raising
+            self.relations.append(
+                CodeRelation(
+                    source_id=self.current_function,
+                    target_id=f"raises:{exception_info['type']}",
+                    relation_type="raises",
+                    weight=0.8,
+                    metadata={
+                        "line": node.lineno,
+                        "exception_type": exception_info["type"],
+                        "has_cause": exception_info["has_cause"],
+                        "is_bare_raise": node.exc is None,
+                    },
+                )
+            )
+
+        self.generic_visit(node)
+
+    def _analyze_assignment_value(self, value_node):
+        """
+        Analyze the value being assigned to understand its type and characteristics.
+
+        Args:
+            value_node: AST node representing the assigned value
+
+        Returns:
+            Dict with type and summary information
+        """
+        if isinstance(value_node, ast.Constant):
+            # Python 3.8+ constant values
+            value_type = type(value_node.value).__name__
+            summary = repr(value_node.value)
+            if len(summary) > 50:
+                summary = summary[:47] + "..."
+            return {"type": value_type, "summary": summary}
+
+        elif isinstance(value_node, ast.Str):
+            # String literal (older Python)
+            summary = repr(value_node.s)
+            if len(summary) > 50:
+                summary = summary[:47] + "..."
+            return {"type": "str", "summary": summary}
+
+        elif isinstance(value_node, ast.Num):
+            # Numeric literal (older Python)
+            return {"type": type(value_node.n).__name__, "summary": str(value_node.n)}
+
+        elif isinstance(value_node, ast.List):
+            return {"type": "list", "summary": f"[...] ({len(value_node.elts)} items)"}
+
+        elif isinstance(value_node, ast.Dict):
+            return {"type": "dict", "summary": f"{{...}} ({len(value_node.keys)} items)"}
+
+        elif isinstance(value_node, ast.Set):
+            return {"type": "set", "summary": f"{{...}} ({len(value_node.elts)} items)"}
+
+        elif isinstance(value_node, ast.Tuple):
+            return {"type": "tuple", "summary": f"(...) ({len(value_node.elts)} items)"}
+
+        elif isinstance(value_node, ast.Call):
+            func_name = self._get_name(value_node.func)
+            return {"type": "call_result", "summary": f"{func_name}(...)"}
+
+        elif isinstance(value_node, ast.Name):
+            return {"type": "variable", "summary": value_node.id}
+
+        elif isinstance(value_node, ast.Attribute):
+            attr_name = self._get_name(value_node)
+            return {"type": "attribute", "summary": attr_name}
+
+        else:
+            return {"type": "complex", "summary": "complex_expression"}
+
     def _get_name(self, node):
         """
         Extract name from AST node handling different node types.
