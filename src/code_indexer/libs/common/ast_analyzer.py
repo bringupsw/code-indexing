@@ -234,6 +234,28 @@ class SemanticASTAnalyzer:
         """
 
         for entity in self.entities:
+            # Analyze decorator patterns for semantic classification
+            if entity.decorators:
+                for decorator in entity.decorators:
+                    if decorator == "property":
+                        entity.annotations["intent"] = "data_access"
+                        entity.annotations["decorator_pattern"] = "property_accessor"
+                    elif decorator == "staticmethod":
+                        entity.annotations["category"] = "utility"
+                        entity.annotations["decorator_pattern"] = "static_utility"
+                    elif decorator == "classmethod":
+                        entity.annotations["intent"] = "factory_method"
+                        entity.annotations["decorator_pattern"] = "class_factory"
+                    elif decorator == "abstractmethod":
+                        entity.annotations["category"] = "contract"
+                        entity.annotations["decorator_pattern"] = "abstract_contract"
+                    elif "cache" in decorator.lower():
+                        entity.annotations["optimization"] = "caching"
+                        entity.annotations["decorator_pattern"] = "performance_cache"
+                    elif "dataclass" in decorator.lower():
+                        entity.annotations["category"] = "data_structure"
+                        entity.annotations["decorator_pattern"] = "data_class"
+
             # Analyze naming patterns for semantic intent
             if entity.type == "function":
                 if entity.name.startswith("test_"):
@@ -503,7 +525,11 @@ class SemanticVisitor(ast.NodeVisitor):
             signature=f"{node.name}({', '.join([arg.arg for arg in node.args.args])})",
             complexity=complexity_visitor.complexity,
             parameters=[arg.arg for arg in node.args.args],
-            decorators=[self._get_name(d) for d in node.decorator_list],
+            decorators=[
+                name
+                for name in [self._get_name(d) for d in node.decorator_list]
+                if name is not None
+            ],
             class_name=self.current_class,
             has_docstring=bool(ast.get_docstring(node)),
             has_type_hints=bool(node.returns or any(arg.annotation for arg in node.args.args)),
@@ -566,7 +592,11 @@ class SemanticVisitor(ast.NodeVisitor):
             docstring=ast.get_docstring(node),
             signature=signature,
             complexity=0,
-            decorators=[self._get_name(d) for d in node.decorator_list],
+            decorators=[
+                name
+                for name in [self._get_name(d) for d in node.decorator_list]
+                if name is not None
+            ],
             has_docstring=bool(ast.get_docstring(node)),
             base_classes=inheritance_info["base_classes"],
             is_abstract=inheritance_info["is_abstract"],
@@ -629,6 +659,10 @@ class SemanticVisitor(ast.NodeVisitor):
             return node.id
         elif isinstance(node, ast.Attribute):
             return f"{self._get_name(node.value)}.{node.attr}"
+        elif isinstance(node, ast.Call):
+            # Handle decorator calls like @lru_cache(maxsize=128)
+            func_name = self._get_name(node.func)
+            return func_name if func_name else "unknown_call"
         return None
 
     def _find_function_end(self, node):

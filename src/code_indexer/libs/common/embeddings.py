@@ -141,11 +141,19 @@ class CodeEmbeddingGenerator:
         Returns:
             np.ndarray: Text-based embedding vector
         """
-        # Build comprehensive text representation including inheritance
+        # Build comprehensive text representation including inheritance and decorators
         text_parts = [entity.name]
 
         if entity.docstring:
             text_parts.append(entity.docstring)
+
+        # Add decorator information for better search capability
+        if entity.decorators:
+            # Filter out None values and convert to strings
+            valid_decorators = [str(d) for d in entity.decorators if d is not None]
+            if valid_decorators:
+                decorator_text = f"decorated with {', '.join(valid_decorators)}"
+                text_parts.append(decorator_text)
 
         # Add inheritance information for classes
         if entity.type == "class" and entity.base_classes:
@@ -193,10 +201,23 @@ class CodeEmbeddingGenerator:
             entity.line_end - entity.line_start,
             len(entity.parameters),
             1 if entity.docstring else 0,
+            len(entity.decorators) if entity.decorators else 0,  # Number of decorators
             len(entity.base_classes) if entity.base_classes else 0,  # Inheritance depth
             1 if entity.is_abstract else 0,  # Abstract class indicator
             1 if entity.type == "class" else 0,  # Class type indicator
         ]
+
+        # Add specific decorator type indicators (common decorator patterns)
+        common_decorators = [
+            "property",
+            "staticmethod",
+            "classmethod",
+            "abstractmethod",
+            "cached_property",
+        ]
+        for decorator in common_decorators:
+            has_decorator = 1 if entity.decorators and decorator in entity.decorators else 0
+            features.append(has_decorator)
 
         # Pad to fixed size for consistent vector dimensions
         features.extend([0] * (64 - len(features)))
@@ -236,6 +257,25 @@ class CodeEmbeddingGenerator:
         visibility_map = {"public": 0, "private": 1, "protected": 2}
         visibility = entity.annotations.get("visibility", "public")
         context_features.append(visibility_map.get(visibility, 0))
+
+        # Decorator-based semantic classification
+        decorator_semantics = {
+            "property": 1,  # Data access pattern
+            "staticmethod": 2,  # Utility function
+            "classmethod": 3,  # Factory/alternative constructor
+            "abstractmethod": 4,  # Contract definition
+            "cached_property": 5,  # Optimized data access
+            "dataclass": 6,  # Data structure
+            "lru_cache": 7,  # Performance optimization
+        }
+
+        max_decorator_semantic = 0
+        if entity.decorators:
+            for decorator in entity.decorators:
+                semantic_value = decorator_semantics.get(decorator, 0)
+                max_decorator_semantic = max(max_decorator_semantic, semantic_value)
+
+        context_features.append(max_decorator_semantic)
 
         # Business domain encoding
         domain_features = [0] * 8  # Support for 8 domains
