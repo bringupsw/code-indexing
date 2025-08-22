@@ -116,6 +116,8 @@ class CodeEntity:
         is_tested (bool): Whether entity has corresponding tests
         handles_exceptions (bool): Whether entity handles exceptions
         has_type_hints (bool): Whether entity has type annotations
+        base_classes (List[str]): Parent classes for inheritance (classes only)
+        is_abstract (bool): Whether class is abstract or has abstract methods
         business_domain (Optional[str]): Associated business domain
         team_owner (Optional[str]): Team responsible for this code
         architectural_pattern (Optional[str]): Associated architectural pattern
@@ -148,6 +150,8 @@ class CodeEntity:
     is_tested: bool = False
     handles_exceptions: bool = False
     has_type_hints: bool = False
+    base_classes: List[str] = None
+    is_abstract: bool = False
     business_domain: Optional[str] = None
     team_owner: Optional[str] = None
     architectural_pattern: Optional[str] = None
@@ -169,6 +173,8 @@ class CodeEntity:
             self.variables = []
         if self.dependencies is None:
             self.dependencies = []
+        if self.base_classes is None:
+            self.base_classes = []
         if self.quality_issues is None:
             self.quality_issues = []
         if self.annotations is None:

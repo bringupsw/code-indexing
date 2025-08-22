@@ -117,7 +117,7 @@ class SemanticASTAnalyzer:
 
             tree = ast.parse(source, filename=str(file_path))
 
-            visitor = SemanticVisitor(str(file_path), source.split("\\n"))
+            visitor = SemanticVisitor(str(file_path), source.split("\n"))
             visitor.visit(tree)
 
             return visitor.entities, visitor.relations
@@ -154,6 +154,71 @@ class SemanticASTAnalyzer:
                             metadata={"type": "cross_file_dependency"},
                         )
                     )
+
+        # Build inheritance relationships
+        self._build_inheritance_relationships(entity_lookup)
+
+    def _build_inheritance_relationships(self, entity_lookup):
+        """
+        Build inheritance relationships between classes.
+        
+        This method creates inheritance relationships in the knowledge graph
+        and populates the inheritance_tree for hierarchical analysis.
+        
+        Args:
+            entity_lookup (Dict[str, CodeEntity]): Lookup dictionary of entities by full_name
+        """
+        for entity in self.entities:
+            if entity.type == "class" and entity.base_classes:
+                for base_class in entity.base_classes:
+                    # Handle both simple names and qualified names
+                    potential_matches = [
+                        base_class,  # Direct match
+                        f"{entity.file_path.split('/')[-1].replace('.py', '')}.{base_class}",  # Same module
+                    ]
+                    
+                    # Try to find the base class in our entities
+                    base_entity = None
+                    for potential_name in potential_matches:
+                        if potential_name in entity_lookup:
+                            base_entity = entity_lookup[potential_name]
+                            break
+                    
+                    if base_entity:
+                        # Create inheritance relationship
+                        self.relations.append(
+                            CodeRelation(
+                                source_id=entity.id,
+                                target_id=base_entity.id,
+                                relation_type="inherits_from",
+                                weight=1.0,
+                                metadata={
+                                    "type": "inheritance",
+                                    "base_class": base_class,
+                                    "child_class": entity.name
+                                }
+                            )
+                        )
+                        
+                        # Update inheritance tree
+                        if base_entity.full_name not in self.inheritance_tree:
+                            self.inheritance_tree[base_entity.full_name] = []
+                        self.inheritance_tree[base_entity.full_name].append(entity.full_name)
+                    else:
+                        # Create external inheritance relationship (base class not in our codebase)
+                        self.relations.append(
+                            CodeRelation(
+                                source_id=entity.id,
+                                target_id=f"external:{base_class}",
+                                relation_type="inherits_from",
+                                weight=0.7,
+                                metadata={
+                                    "type": "external_inheritance",
+                                    "base_class": base_class,
+                                    "child_class": entity.name
+                                }
+                            )
+                        )
 
     def _enhance_semantic_context(self):
         """
@@ -298,7 +363,7 @@ class SemanticASTAnalyzer:
         # Check line length
         if "max_line_length" in team.code_style:
             max_length = team.code_style["max_line_length"]
-            lines = entity.source_code.split("\\n")
+            lines = entity.source_code.split("\n")
             long_lines = [i + 1 for i, line in enumerate(lines) if len(line) > max_length]
             if long_lines:
                 style_issues.append(f"Lines exceed {max_length} characters: {long_lines[:5]}")
@@ -415,7 +480,7 @@ class SemanticVisitor(ast.NodeVisitor):
 
         # Extract function source code
         end_line = self._find_function_end(node)
-        source_code = "\\n".join(self.lines[node.lineno - 1 : end_line])
+        source_code = "\n".join(self.lines[node.lineno - 1 : end_line])
 
         # Calculate complexity
         complexity_visitor = ComplexityVisitor()
@@ -446,6 +511,14 @@ class SemanticVisitor(ast.NodeVisitor):
             dependencies=dep_visitor.dependencies,
         )
 
+        # Extract and merge type annotations
+        type_annotations = self._extract_type_annotations(node)
+        entity.annotations.update(type_annotations)
+
+        # Extract inline comments for additional context
+        inline_comments = self._extract_inline_comments(source_code)
+        entity.annotations["inline_comments"] = inline_comments
+
         self.entities.append(entity)
 
         # Track function calls within this function
@@ -470,22 +543,38 @@ class SemanticVisitor(ast.NodeVisitor):
         entity_id = f"{self.file_path}:{node.name}:{node.lineno}"
 
         end_line = self._find_class_end(node)
-        source_code = "\\n".join(self.lines[node.lineno - 1 : end_line])
+        source_code = "\n".join(self.lines[node.lineno - 1 : end_line])
+
+        # Extract inheritance information
+        inheritance_info = self._extract_inheritance_info(node)
+        
+        # Build signature with inheritance
+        if inheritance_info['base_classes']:
+            signature = f"class {node.name}({', '.join(inheritance_info['base_classes'])})"
+        else:
+            signature = f"class {node.name}"
 
         entity = CodeEntity(
             id=entity_id,
             name=node.name,
+            full_name=node.name,  # For classes, full_name is same as name unless in a module
             type="class",
             file_path=self.file_path,
             line_start=node.lineno,
             line_end=end_line,
             source_code=source_code,
             docstring=ast.get_docstring(node),
-            signature=f"class {node.name}",
+            signature=signature,
             complexity=0,
             decorators=[self._get_name(d) for d in node.decorator_list],
             has_docstring=bool(ast.get_docstring(node)),
+            base_classes=inheritance_info['base_classes'],
+            is_abstract=inheritance_info['is_abstract'],
         )
+
+        # Extract inline comments for additional context
+        inline_comments = self._extract_inline_comments(source_code)
+        entity.annotations["inline_comments"] = inline_comments
 
         self.entities.append(entity)
 
@@ -612,6 +701,68 @@ class SemanticVisitor(ast.NodeVisitor):
             if isinstance(child, ast.Try):
                 return True
         return False
+
+    def _extract_inheritance_info(self, node):
+        """Extract inheritance information from class definition"""
+        inheritance_info = {
+            'base_classes': [],
+            'is_abstract': False
+        }
+        
+        # Extract base classes
+        for base in node.bases:
+            base_name = self._get_name(base)
+            if base_name:
+                inheritance_info['base_classes'].append(base_name)
+        
+        # Check if class is abstract (has @abstractmethod or ABC inheritance)
+        inheritance_info['is_abstract'] = self._is_abstract_class(node, inheritance_info['base_classes'])
+        
+        return inheritance_info
+
+    def _is_abstract_class(self, node, base_classes):
+        """Check if class is abstract based on decorators, methods, and inheritance"""
+        # Check if inherits from ABC or Abstract base classes
+        abc_bases = ['ABC', 'abc.ABC', 'abstractmethod', 'Abstract']
+        if any(base in abc_bases for base in base_classes):
+            return True
+        
+        # Check for @abstractmethod decorators on methods
+        for child in ast.walk(node):
+            if isinstance(child, ast.FunctionDef):
+                for decorator in child.decorator_list:
+                    decorator_name = self._get_name(decorator)
+                    if decorator_name and 'abstract' in decorator_name.lower():
+                        return True
+        
+        # Check for "Abstract" in class name
+        if 'abstract' in node.name.lower() or node.name.startswith('Abstract'):
+            return True
+        
+        return False
+
+    def _extract_inline_comments(self, source_code):
+        """Extract inline comments for additional context"""
+        comments = []
+        for line in source_code.split('\n'):
+            if '#' in line and not line.strip().startswith('#'):
+                comment = line.split('#', 1)[1].strip()
+                if comment:
+                    comments.append(comment)
+        return comments
+
+    def _extract_type_annotations(self, node):
+        """Extract actual type annotation strings"""
+        type_info = {}
+        if hasattr(node, 'returns') and node.returns:
+            type_info['return_type'] = ast.unparse(node.returns)
+        
+        type_info['param_types'] = {}
+        for arg in node.args.args:
+            if arg.annotation:
+                type_info['param_types'][arg.arg] = ast.unparse(arg.annotation)
+        
+        return type_info
 
 
 class ComplexityVisitor(ast.NodeVisitor):

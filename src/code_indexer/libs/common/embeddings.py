@@ -141,7 +141,22 @@ class CodeEmbeddingGenerator:
         Returns:
             np.ndarray: Text-based embedding vector
         """
-        text = f"{entity.name} {entity.docstring or ''} {entity.source_code}"
+        # Build comprehensive text representation including inheritance
+        text_parts = [entity.name]
+        
+        if entity.docstring:
+            text_parts.append(entity.docstring)
+        
+        # Add inheritance information for classes
+        if entity.type == "class" and entity.base_classes:
+            inheritance_text = f"inherits from {', '.join(entity.base_classes)}"
+            text_parts.append(inheritance_text)
+            
+        if entity.is_abstract:
+            text_parts.append("abstract class")
+        
+        text_parts.append(entity.source_code)
+        text = " ".join(text_parts)
 
         if self.use_real_embeddings and self.text_model:
             # Use real ML model
@@ -178,6 +193,9 @@ class CodeEmbeddingGenerator:
             entity.line_end - entity.line_start,
             len(entity.parameters),
             1 if entity.docstring else 0,
+            len(entity.base_classes) if entity.base_classes else 0,  # Inheritance depth
+            1 if entity.is_abstract else 0,  # Abstract class indicator
+            1 if entity.type == "class" else 0,  # Class type indicator
         ]
 
         # Pad to fixed size for consistent vector dimensions

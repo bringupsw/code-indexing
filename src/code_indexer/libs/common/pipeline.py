@@ -62,7 +62,7 @@ class CodebaseSemanticPipeline:
         self.embedding_generator = CodeEmbeddingGenerator()
         self.knowledge_graph = CodeKnowledgeGraph(str(self.output_dir / "knowledge.db"))
 
-    def process_codebase(self, codebase_path: str):
+    def process_codebase(self, codebase_path: str, project_name: str = None):
         """
         Execute the complete pipeline processing workflow.
 
@@ -74,6 +74,7 @@ class CodebaseSemanticPipeline:
 
         Args:
             codebase_path (str): Path to the codebase to analyze
+            project_name (str): Identifier/name for the project being indexed
 
         Returns:
             Dict: Summary statistics about the processing results
@@ -97,8 +98,8 @@ class CodebaseSemanticPipeline:
 
         print("✅ Pipeline completed successfully!")
 
-        # Generate summary report
-        self._generate_summary_report(entities, relations)
+        # Generate summary report with project information
+        self._generate_summary_report(entities, relations, codebase_path, project_name)
 
         return {
             "entities": len(entities),
@@ -213,7 +214,8 @@ class CodebaseSemanticPipeline:
             "metadata": result.metadata,
         }
 
-    def _generate_summary_report(self, entities: List[CodeEntity], relations: List[CodeRelation]):
+    def _generate_summary_report(self, entities: List[CodeEntity], relations: List[CodeRelation], 
+                                codebase_path: str = None, project_name: str = None):
         """
         Generate comprehensive summary report of the indexed codebase.
 
@@ -224,15 +226,27 @@ class CodebaseSemanticPipeline:
         Args:
             entities (List[CodeEntity]): All extracted entities
             relations (List[CodeRelation]): All discovered relationships
+            codebase_path (str): Path to the source codebase
+            project_name (str): Identifier/name for the project
 
         Report includes:
+        - Project identification information
         - Entity type distribution
         - Complexity analysis
         - Relationship type analysis
         - Most complex functions
         - Other structural metrics
         """
+        # Determine project name if not provided
+        if not project_name and codebase_path:
+            project_name = Path(codebase_path).name
+        elif not project_name:
+            project_name = "Unknown Project"
+            
         summary = {
+            "project_name": project_name,
+            "source_path": codebase_path,
+            "created_at": datetime.now().isoformat(),
             "total_entities": len(entities),
             "entity_types": {},
             "total_relations": len(relations),
@@ -332,6 +346,8 @@ class CodebaseSemanticPipeline:
             json.dump(summary, f, indent=2)
 
         print(f"📈 Summary Report:")
+        print(f"   Project: {summary['project_name']}")
+        print(f"   Source: {summary['source_path']}")
         print(f"   Total Entities: {summary['total_entities']}")
         print(f"   Entity Types: {summary['entity_types']}")
         print(f"   Total Relations: {summary['total_relations']}")

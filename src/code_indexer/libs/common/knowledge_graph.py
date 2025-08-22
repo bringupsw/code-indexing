@@ -84,6 +84,8 @@ class CodeKnowledgeGraph:
                 is_tested BOOLEAN,
                 handles_exceptions BOOLEAN,
                 has_type_hints BOOLEAN,
+                base_classes TEXT,
+                is_abstract BOOLEAN,
                 business_domain TEXT,
                 team_owner TEXT,
                 architectural_pattern TEXT,
@@ -157,9 +159,9 @@ class CodeKnowledgeGraph:
                 (id, type, name, file_path, line_start, line_end, source_code, docstring, 
                  signature, complexity, parameters, return_type, decorators, class_name,
                  imports, calls, variables, has_docstring, is_public, is_tested,
-                 handles_exceptions, has_type_hints, business_domain, team_owner,
+                 handles_exceptions, has_type_hints, base_classes, is_abstract, business_domain, team_owner,
                  architectural_pattern, importance_score, quality_issues, annotations, embedding)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     entity.id,
@@ -184,6 +186,8 @@ class CodeKnowledgeGraph:
                     entity.is_tested,
                     entity.handles_exceptions,
                     entity.has_type_hints,
+                    json.dumps(entity.base_classes),
+                    entity.is_abstract,
                     entity.business_domain,
                     entity.team_owner,
                     entity.architectural_pattern,

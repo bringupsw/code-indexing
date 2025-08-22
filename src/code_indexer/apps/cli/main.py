@@ -49,8 +49,12 @@ Examples:
   # Create default configuration files for your project
   python -m code_indexer.apps.cli --create-config --context-config ./my_context
 
-  # Basic usage - index a codebase with contextual knowledge
-  python -m code_indexer.apps.cli --codebase /path/to/codebase --output ./index --context-config ./context_config
+  # Basic usage - index a codebase with contextual knowledge and project identifier
+  python -m code_indexer.apps.cli --codebase /path/to/codebase --project-name "my-project" --output ./index --context-config ./context_config
+
+  # Index different projects with clear identification
+  python -m code_indexer.apps.cli --codebase /path/to/paperless-ngx --project-name "paperless-ngx" --output ./paperless-index
+  python -m code_indexer.apps.cli --codebase /path/to/django-app --project-name "my-django-app" --output ./django-index
 
   # AI Agent natural language queries
   python -m code_indexer.apps.cli --ask "Find all authentication functions" --index ./index
@@ -67,7 +71,7 @@ Examples:
   python -m code_indexer.apps.cli --report --index ./index --analytics --save-results ./report.json
 
   # Update existing index (incremental)
-  python -m code_indexer.apps.cli --codebase /path/to/codebase --output ./index --incremental
+  python -m code_indexer.apps.cli --codebase /path/to/codebase --project-name "my-project" --output ./index --incremental
         """,
     )
 
@@ -87,6 +91,13 @@ Examples:
     )
     operation_group.add_argument(
         "--ask", type=str, help="Ask the AI agent a natural language question about the codebase"
+    )
+
+    # Project identification (required when indexing)
+    parser.add_argument(
+        "--project-name", "-p", 
+        type=str, 
+        help="Project identifier/name (required when using --codebase)"
     )
 
     # Output/Index paths
@@ -191,6 +202,9 @@ Examples:
     args = parser.parse_args()
 
     # Validation
+    if args.codebase and not args.project_name:
+        parser.error("--project-name is required when using --codebase")
+        
     if args.search or args.report or args.ask:
         if not args.index:
             args.index = args.output
@@ -377,8 +391,8 @@ def main():
             if args.workers:
                 print_progress(f"⚡ Using {args.workers} worker processes", args.quiet)
 
-            # Process the codebase
-            results = pipeline.process_codebase(args.codebase)
+            # Process the codebase with project identifier
+            results = pipeline.process_codebase(args.codebase, project_name=args.project_name)
 
             elapsed = time.time() - start_time
             print_progress(f"✅ Processing completed in {elapsed:.2f} seconds", args.quiet)
