@@ -214,8 +214,13 @@ class CodebaseSemanticPipeline:
             "metadata": result.metadata,
         }
 
-    def _generate_summary_report(self, entities: List[CodeEntity], relations: List[CodeRelation], 
-                                codebase_path: str = None, project_name: str = None):
+    def _generate_summary_report(
+        self,
+        entities: List[CodeEntity],
+        relations: List[CodeRelation],
+        codebase_path: str = None,
+        project_name: str = None,
+    ):
         """
         Generate comprehensive summary report of the indexed codebase.
 
@@ -242,7 +247,7 @@ class CodebaseSemanticPipeline:
             project_name = Path(codebase_path).name
         elif not project_name:
             project_name = "Unknown Project"
-            
+
         summary = {
             "project_name": project_name,
             "source_path": codebase_path,

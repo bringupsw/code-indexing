@@ -161,10 +161,10 @@ class SemanticASTAnalyzer:
     def _build_inheritance_relationships(self, entity_lookup):
         """
         Build inheritance relationships between classes.
-        
+
         This method creates inheritance relationships in the knowledge graph
         and populates the inheritance_tree for hierarchical analysis.
-        
+
         Args:
             entity_lookup (Dict[str, CodeEntity]): Lookup dictionary of entities by full_name
         """
@@ -176,14 +176,14 @@ class SemanticASTAnalyzer:
                         base_class,  # Direct match
                         f"{entity.file_path.split('/')[-1].replace('.py', '')}.{base_class}",  # Same module
                     ]
-                    
+
                     # Try to find the base class in our entities
                     base_entity = None
                     for potential_name in potential_matches:
                         if potential_name in entity_lookup:
                             base_entity = entity_lookup[potential_name]
                             break
-                    
+
                     if base_entity:
                         # Create inheritance relationship
                         self.relations.append(
@@ -195,11 +195,11 @@ class SemanticASTAnalyzer:
                                 metadata={
                                     "type": "inheritance",
                                     "base_class": base_class,
-                                    "child_class": entity.name
-                                }
+                                    "child_class": entity.name,
+                                },
                             )
                         )
-                        
+
                         # Update inheritance tree
                         if base_entity.full_name not in self.inheritance_tree:
                             self.inheritance_tree[base_entity.full_name] = []
@@ -215,8 +215,8 @@ class SemanticASTAnalyzer:
                                 metadata={
                                     "type": "external_inheritance",
                                     "base_class": base_class,
-                                    "child_class": entity.name
-                                }
+                                    "child_class": entity.name,
+                                },
                             )
                         )
 
@@ -547,9 +547,9 @@ class SemanticVisitor(ast.NodeVisitor):
 
         # Extract inheritance information
         inheritance_info = self._extract_inheritance_info(node)
-        
+
         # Build signature with inheritance
-        if inheritance_info['base_classes']:
+        if inheritance_info["base_classes"]:
             signature = f"class {node.name}({', '.join(inheritance_info['base_classes'])})"
         else:
             signature = f"class {node.name}"
@@ -568,8 +568,8 @@ class SemanticVisitor(ast.NodeVisitor):
             complexity=0,
             decorators=[self._get_name(d) for d in node.decorator_list],
             has_docstring=bool(ast.get_docstring(node)),
-            base_classes=inheritance_info['base_classes'],
-            is_abstract=inheritance_info['is_abstract'],
+            base_classes=inheritance_info["base_classes"],
+            is_abstract=inheritance_info["is_abstract"],
         )
 
         # Extract inline comments for additional context
@@ -704,49 +704,48 @@ class SemanticVisitor(ast.NodeVisitor):
 
     def _extract_inheritance_info(self, node):
         """Extract inheritance information from class definition"""
-        inheritance_info = {
-            'base_classes': [],
-            'is_abstract': False
-        }
-        
+        inheritance_info = {"base_classes": [], "is_abstract": False}
+
         # Extract base classes
         for base in node.bases:
             base_name = self._get_name(base)
             if base_name:
-                inheritance_info['base_classes'].append(base_name)
-        
+                inheritance_info["base_classes"].append(base_name)
+
         # Check if class is abstract (has @abstractmethod or ABC inheritance)
-        inheritance_info['is_abstract'] = self._is_abstract_class(node, inheritance_info['base_classes'])
-        
+        inheritance_info["is_abstract"] = self._is_abstract_class(
+            node, inheritance_info["base_classes"]
+        )
+
         return inheritance_info
 
     def _is_abstract_class(self, node, base_classes):
         """Check if class is abstract based on decorators, methods, and inheritance"""
         # Check if inherits from ABC or Abstract base classes
-        abc_bases = ['ABC', 'abc.ABC', 'abstractmethod', 'Abstract']
+        abc_bases = ["ABC", "abc.ABC", "abstractmethod", "Abstract"]
         if any(base in abc_bases for base in base_classes):
             return True
-        
+
         # Check for @abstractmethod decorators on methods
         for child in ast.walk(node):
             if isinstance(child, ast.FunctionDef):
                 for decorator in child.decorator_list:
                     decorator_name = self._get_name(decorator)
-                    if decorator_name and 'abstract' in decorator_name.lower():
+                    if decorator_name and "abstract" in decorator_name.lower():
                         return True
-        
+
         # Check for "Abstract" in class name
-        if 'abstract' in node.name.lower() or node.name.startswith('Abstract'):
+        if "abstract" in node.name.lower() or node.name.startswith("Abstract"):
             return True
-        
+
         return False
 
     def _extract_inline_comments(self, source_code):
         """Extract inline comments for additional context"""
         comments = []
-        for line in source_code.split('\n'):
-            if '#' in line and not line.strip().startswith('#'):
-                comment = line.split('#', 1)[1].strip()
+        for line in source_code.split("\n"):
+            if "#" in line and not line.strip().startswith("#"):
+                comment = line.split("#", 1)[1].strip()
                 if comment:
                     comments.append(comment)
         return comments
@@ -754,14 +753,14 @@ class SemanticVisitor(ast.NodeVisitor):
     def _extract_type_annotations(self, node):
         """Extract actual type annotation strings"""
         type_info = {}
-        if hasattr(node, 'returns') and node.returns:
-            type_info['return_type'] = ast.unparse(node.returns)
-        
-        type_info['param_types'] = {}
+        if hasattr(node, "returns") and node.returns:
+            type_info["return_type"] = ast.unparse(node.returns)
+
+        type_info["param_types"] = {}
         for arg in node.args.args:
             if arg.annotation:
-                type_info['param_types'][arg.arg] = ast.unparse(arg.annotation)
-        
+                type_info["param_types"][arg.arg] = ast.unparse(arg.annotation)
+
         return type_info
 
 

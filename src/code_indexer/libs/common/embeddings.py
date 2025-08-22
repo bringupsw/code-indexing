@@ -143,18 +143,18 @@ class CodeEmbeddingGenerator:
         """
         # Build comprehensive text representation including inheritance
         text_parts = [entity.name]
-        
+
         if entity.docstring:
             text_parts.append(entity.docstring)
-        
+
         # Add inheritance information for classes
         if entity.type == "class" and entity.base_classes:
             inheritance_text = f"inherits from {', '.join(entity.base_classes)}"
             text_parts.append(inheritance_text)
-            
+
         if entity.is_abstract:
             text_parts.append("abstract class")
-        
+
         text_parts.append(entity.source_code)
         text = " ".join(text_parts)
 

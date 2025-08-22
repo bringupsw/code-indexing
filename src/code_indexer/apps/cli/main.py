@@ -95,9 +95,10 @@ Examples:
 
     # Project identification (required when indexing)
     parser.add_argument(
-        "--project-name", "-p", 
-        type=str, 
-        help="Project identifier/name (required when using --codebase)"
+        "--project-name",
+        "-p",
+        type=str,
+        help="Project identifier/name (required when using --codebase)",
     )
 
     # Output/Index paths
@@ -204,7 +205,7 @@ Examples:
     # Validation
     if args.codebase and not args.project_name:
         parser.error("--project-name is required when using --codebase")
-        
+
     if args.search or args.report or args.ask:
         if not args.index:
             args.index = args.output

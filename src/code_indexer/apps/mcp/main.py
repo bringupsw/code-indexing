@@ -311,7 +311,7 @@ def ensure_pipeline(index_path: str = None) -> CodebaseSemanticPipeline:
     # Use DEFAULT_INDEX_PATH from environment if no specific path provided
     if not index_path:
         index_path = os.getenv("DEFAULT_INDEX_PATH")
-    
+
     if index_path and index_path != current_index_path:
         current_index_path = index_path
         pipeline = None
@@ -331,11 +331,11 @@ def get_project_info(index_path: str = None) -> Dict[str, Any]:
     try:
         if not index_path:
             index_path = current_index_path or os.getenv("DEFAULT_INDEX_PATH", "./code_index")
-        
+
         # Try to read summary.json for project info
         summary_path = os.path.join(index_path, "summary.json")
         if os.path.exists(summary_path):
-            with open(summary_path, 'r') as f:
+            with open(summary_path, "r") as f:
                 summary = json.load(f)
                 return {
                     "project_name": summary.get("project_name", "Unknown Project"),
@@ -343,66 +343,102 @@ def get_project_info(index_path: str = None) -> Dict[str, Any]:
                     "total_functions": summary.get("total_functions", 0),
                     "total_classes": summary.get("total_classes", 0),
                     "indexed_at": summary.get("created_at", "Unknown"),
-                    "source_path": summary.get("source_path", "Unknown")
+                    "source_path": summary.get("source_path", "Unknown"),
                 }
         else:
             # Fallback: extract project name from path
-            project_name = os.path.basename(index_path.rstrip('/'))
+            project_name = os.path.basename(index_path.rstrip("/"))
             if project_name.startswith("code-indexed-"):
                 project_name = project_name[13:]  # Remove "code-indexed-" prefix
-            
+
             return {
                 "project_name": project_name,
                 "total_files": "Unknown",
-                "total_functions": "Unknown", 
+                "total_functions": "Unknown",
                 "total_classes": "Unknown",
                 "indexed_at": "Unknown",
-                "source_path": "Unknown"
+                "source_path": "Unknown",
             }
     except Exception as e:
-        return {
-            "project_name": "Unknown Project",
-            "error": str(e)
-        }
+        return {"project_name": "Unknown Project", "error": str(e)}
 
 
 def is_query_relevant_to_project(query: str, project_info: Dict[str, Any]) -> tuple[bool, str]:
     """
     Check if a query is relevant to the indexed project and provide context.
-    
+
     Args:
         query (str): The user's query
         project_info (Dict): Project information from summary.json
-        
+
     Returns:
         tuple[bool, str]: (is_relevant, context_message)
     """
     project_name = project_info.get("project_name", "").lower()
     query_lower = query.lower()
-    
+
     # Keywords that indicate code-related queries
     code_keywords = [
-        "function", "class", "method", "code", "implementation", "algorithm",
-        "authentication", "database", "api", "endpoint", "security", "login",
-        "user", "admin", "permission", "model", "view", "controller", "service",
-        "import", "module", "library", "dependency", "bug", "error", "exception",
-        "test", "unit test", "integration", "performance", "optimization",
-        "refactor", "design pattern", "architecture", "component", "interface"
+        "function",
+        "class",
+        "method",
+        "code",
+        "implementation",
+        "algorithm",
+        "authentication",
+        "database",
+        "api",
+        "endpoint",
+        "security",
+        "login",
+        "user",
+        "admin",
+        "permission",
+        "model",
+        "view",
+        "controller",
+        "service",
+        "import",
+        "module",
+        "library",
+        "dependency",
+        "bug",
+        "error",
+        "exception",
+        "test",
+        "unit test",
+        "integration",
+        "performance",
+        "optimization",
+        "refactor",
+        "design pattern",
+        "architecture",
+        "component",
+        "interface",
     ]
-    
+
     # Check if query mentions the specific project
     project_mentioned = project_name in query_lower if project_name else False
-    
+
     # Check if query contains code-related keywords
     contains_code_keywords = any(keyword in query_lower for keyword in code_keywords)
-    
+
     # Determine relevance
     if project_mentioned:
-        return True, f"✅ Query specifically mentions '{project_info['project_name']}' - this is the indexed project."
+        return (
+            True,
+            f"✅ Query specifically mentions '{project_info['project_name']}' - this is the indexed project.",
+        )
     elif contains_code_keywords:
-        return True, f"📋 This appears to be a code-related query. I have the '{project_info['project_name']}' codebase indexed and can help with questions about it."
+        return (
+            True,
+            f"📋 This appears to be a code-related query. I have the '{project_info['project_name']}' codebase indexed and can help with questions about it.",
+        )
     else:
-        return False, f"ℹ️ This query doesn't appear to be about code analysis. I have the '{project_info['project_name']}' codebase indexed if you'd like to ask questions about that project."
+        return (
+            False,
+            f"ℹ️ This query doesn't appear to be about code analysis. I have the '{project_info['project_name']}' codebase indexed if you'd like to ask questions about that project.",
+        )
 
 
 @server.call_tool()
@@ -466,9 +502,11 @@ async def handle_search_code(args: Dict[str, Any]) -> List[TextContent]:
             return [TextContent(type="text", text=f"No results found for query: '{query}'")]
 
         # Format results
-        index_location = index_path or current_index_path or os.getenv("DEFAULT_INDEX_PATH", "./code_index")
+        index_location = (
+            index_path or current_index_path or os.getenv("DEFAULT_INDEX_PATH", "./code_index")
+        )
         project_info = get_project_info(index_location)
-        
+
         response = f"🔍 **Search Results for**: '{query}'\n"
         response += f"� **Project**: {project_info['project_name']} | **Search Type**: {search_type} | **Results**: {len(results)}\n\n"
 
@@ -505,7 +543,9 @@ async def handle_ask_agent(args: Dict[str, Any]) -> List[TextContent]:
 
         # Check if we have an index to query
         if not pipeline or not hasattr(pipeline, "knowledge_graph"):
-            index_location = index_path or current_index_path or os.getenv("DEFAULT_INDEX_PATH", "./code_index")
+            index_location = (
+                index_path or current_index_path or os.getenv("DEFAULT_INDEX_PATH", "./code_index")
+            )
             return [
                 TextContent(
                     type="text",
@@ -514,10 +554,12 @@ async def handle_ask_agent(args: Dict[str, Any]) -> List[TextContent]:
             ]
 
         # Get project info and check relevance
-        index_location = index_path or current_index_path or os.getenv("DEFAULT_INDEX_PATH", "./code_index")
+        index_location = (
+            index_path or current_index_path or os.getenv("DEFAULT_INDEX_PATH", "./code_index")
+        )
         project_info = get_project_info(index_location)
         is_relevant, relevance_msg = is_query_relevant_to_project(question, project_info)
-        
+
         # Provide context if query seems irrelevant
         if not is_relevant:
             response = f"🤖 **AI Agent Response** | **Project**: {project_info['project_name']}\n\n"
@@ -532,16 +574,18 @@ async def handle_ask_agent(args: Dict[str, Any]) -> List[TextContent]:
             response += f"- Dependencies and imports\n\n"
             response += f"**Example questions**:\n"
             response += f"- \"How does authentication work in {project_info['project_name']}?\"\n"
-            response += f"- \"Show me the main API endpoints\"\n"
-            response += f"- \"What are the most complex functions?\"\n"
-            response += f"- \"Find database models and schemas\"\n"
-            
+            response += f'- "Show me the main API endpoints"\n'
+            response += f'- "What are the most complex functions?"\n'
+            response += f'- "Find database models and schemas"\n'
+
             return [TextContent(type="text", text=response)]
 
         # Query the AI agent
         agent_response = pipeline.query_agent(question, format_type=format_type)
 
-        formatted_response = f"🤖 **AI Agent Response** | **Project**: {project_info['project_name']}\n\n"
+        formatted_response = (
+            f"🤖 **AI Agent Response** | **Project**: {project_info['project_name']}\n\n"
+        )
         formatted_response += f"**Question**: {question}\n\n"
         formatted_response += f"{relevance_msg}\n\n"
         formatted_response += f"**Answer**:\n{agent_response}"
@@ -793,13 +837,13 @@ async def handle_list_indexes(args: Dict[str, Any]) -> List[TextContent]:
                 response += f"**{i}. {project_info['project_name']}**{marker_text}\n"
                 response += f"   📁 Path: {index_dir}\n"
                 response += f"   📊 Size: {size_mb:.1f} MB | Modified: {mod_time}\n"
-                
-                if project_info.get('total_files') != 'Unknown':
+
+                if project_info.get("total_files") != "Unknown":
                     response += f"   � Files: {project_info['total_files']} | Functions: {project_info['total_functions']} | Classes: {project_info['total_classes']}\n"
-                
-                if project_info.get('source_path') != 'Unknown':
+
+                if project_info.get("source_path") != "Unknown":
                     response += f"   � Source: {project_info['source_path']}\n"
-                    
+
                 response += "\n"
 
         response += f"\n💡 **Usage Tips** (Read-Only Mode):\n"
@@ -817,67 +861,73 @@ async def handle_list_indexes(args: Dict[str, Any]) -> List[TextContent]:
 async def handle_get_project_context(args: Dict[str, Any]) -> List[TextContent]:
     """Handle project context information request."""
     check_query = args.get("check_query_relevance")
-    
+
     try:
         # Get default index path
         default_index = os.getenv("DEFAULT_INDEX_PATH")
         current_project_info = None
-        
+
         if default_index:
             current_project_info = get_project_info(default_index)
         elif current_index_path:
             current_project_info = get_project_info(current_index_path)
-        
+
         if not current_project_info:
-            return [TextContent(
-                type="text", 
-                text="❌ No project is currently indexed or available. Please use the CLI tool to index a codebase first."
-            )]
-        
+            return [
+                TextContent(
+                    type="text",
+                    text="❌ No project is currently indexed or available. Please use the CLI tool to index a codebase first.",
+                )
+            ]
+
         response = f"📋 **Current Project Context**\n\n"
         response += f"**Project**: {current_project_info['project_name']}\n"
-        
-        if current_project_info.get('source_path') != 'Unknown':
+
+        if current_project_info.get("source_path") != "Unknown":
             response += f"**Source**: {current_project_info['source_path']}\n"
-        
-        if current_project_info.get('indexed_at') != 'Unknown':
+
+        if current_project_info.get("indexed_at") != "Unknown":
             response += f"**Indexed**: {current_project_info['indexed_at']}\n"
-        
-        if current_project_info.get('total_files') != 'Unknown':
+
+        if current_project_info.get("total_files") != "Unknown":
             response += f"\n**Statistics**:\n"
             response += f"- Files: {current_project_info['total_files']}\n"
             response += f"- Functions: {current_project_info['total_functions']}\n"
             response += f"- Classes: {current_project_info['total_classes']}\n"
-        
+
         response += f"\n**Available Tools**:\n"
         response += f"- `search_code`: Search for specific code patterns\n"
         response += f"- `ask_agent`: Ask natural language questions about the code\n"
         response += f"- `get_code_analytics`: Get code quality and complexity metrics\n"
         response += f"- `find_similar_code`: Find similar functions or classes\n"
-        response += f"- `get_entity_details`: Get detailed information about specific functions/classes\n"
-        
+        response += (
+            f"- `get_entity_details`: Get detailed information about specific functions/classes\n"
+        )
+
         # Check query relevance if provided
         if check_query:
-            is_relevant, relevance_msg = is_query_relevant_to_project(check_query, current_project_info)
+            is_relevant, relevance_msg = is_query_relevant_to_project(
+                check_query, current_project_info
+            )
             response += f"\n**Query Relevance Check**:\n"
-            response += f"Query: \"{check_query}\"\n"
+            response += f'Query: "{check_query}"\n'
             response += f"{relevance_msg}\n"
-            
+
             if not is_relevant:
                 response += f"\n💡 **Suggestion**: Try asking about:\n"
                 response += f"- \"Show me authentication functions in {current_project_info['project_name']}\"\n"
-                response += f"- \"What are the most complex functions in this codebase?\"\n"
-                response += f"- \"Find database-related code\"\n"
-                response += f"- \"Show me the main API endpoints\"\n"
+                response += f'- "What are the most complex functions in this codebase?"\n'
+                response += f'- "Find database-related code"\n'
+                response += f'- "Show me the main API endpoints"\n'
         else:
             response += f"\n💡 **Example Questions**:\n"
             response += f"- \"Show me authentication functions in {current_project_info['project_name']}\"\n"
-            response += f"- \"What are the most complex functions?\"\n"
-            response += f"- \"Find database-related code\"\n"
-            response += f"- \"Show me security-critical functions\"\n"
-        
+            response += f'- "What are the most complex functions?"\n'
+            response += f'- "Find database-related code"\n'
+            response += f'- "Show me security-critical functions"\n'
+
         return [TextContent(type="text", text=response)]
-        
+
     except Exception as e:
         return [TextContent(type="text", text=f"Error getting project context: {str(e)}")]
 
